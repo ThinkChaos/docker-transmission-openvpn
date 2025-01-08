@@ -24,9 +24,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # QEMU emulator to build for other platforms
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      # # QEMU emulator to build for other platforms
+      # - name: Set up QEMU
+      #   uses: docker/setup-qemu-action@v3
 
       # Buildx automates creating the multi-arch manifest build
       - name: Set up Docker Buildx
@@ -59,7 +59,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
-          platforms: linux/amd64,linux/arm,linux/arm64
+          platforms: linux/amd64 #`,linux/arm,linux/arm64
           build-args: |
             REVISION=${{ github.sha }}
           pull: true
