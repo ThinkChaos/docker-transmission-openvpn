@@ -42,11 +42,10 @@ RUN set -ex; \
       libssl-dev \
       natpmpc
 
-# The file ./upstream/Dockerfile is inlined below so we can apply the patch
 FROM ubuntu:22.04 as TransmissionBuilder
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG TBT_VERSION=4.0.4
+ARG TBT_VERSION=4.0.6
 
 RUN set -ex; \
     apt-get update; \
@@ -78,11 +77,19 @@ RUN set -ex; \
       pkg-config \ 
       tzdata \
       xz-utils
+
+# ADDED: copy @tearfur's patch into the build
+COPY ./upstream/popcount.patch /tmp
+
 #This will build the transmission image to re-use in our container
 RUN mkdir -p /home/transmission4/ && cd /home/transmission4/ \
     && curl -L -o transmission4.tar.xz "https://github.com/transmission/transmission/releases/download/${TBT_VERSION}/transmission-${TBT_VERSION}.tar.xz" \
-    && tar -xf transmission4.tar.xz && cd "transmission-${TBT_VERSION}" && mkdir build && cd build \
-    && cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && make && make install \
+    && tar -xf transmission4.tar.xz && cd "transmission-${TBT_VERSION}" \
+    # ADDED: apply @tearfur's patch to the downloaded source code
+    && patch /tmp/popcount.patch \
+    && mkdir build && cd build \
+    # ADDED: use all cores for the build
+    && cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && make -j $(nprocs) && make install \
     && checkinstall -y -D --pkgname transmission  --pakdir /var/tmp --pkgversion=${TBT_VERSION}
 
 FROM base
@@ -93,7 +100,7 @@ VOLUME /config
 COPY --from=TransmissionUIs /opt/transmission-ui /opt/transmission-ui
 COPY --from=TransmissionBuilder /var/tmp/*.deb /var/tmp/
 
-ARG TBT_VERSION=4.0.5
+ARG TBT_VERSION=4.0.6
 ARG DEBIAN_FRONTEND=noninteractive
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
